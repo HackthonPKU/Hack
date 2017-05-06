@@ -18,8 +18,6 @@ bool flag = false;
 
 bool hit = false;
 
-int64_t zeroTime = -1;
-
 int64_t pauseCount = 0;
 
 int64_t prevPause = -1;
@@ -31,6 +29,16 @@ pthread_mutex_t mutex_k;
 Vector dest[4];
 
 float score;
+
+
+
+Frame pauseFrame;
+int64_t offset;
+bool isPause;
+
+
+
+
 
 class SampleListener : public Listener {
 public:
@@ -100,27 +108,25 @@ void SampleListener::onFrame(const Controller& controller) {
     << ", gestures: " << frame.gestures().count() << std::endl;*/
     if (frame.hands().count()>1)
         return ;
-    HandList hands = frame.hands();
-    if (flag && frame.timestamp() - prevPause >= 500000)
+    if (frame.hands().count()==0)
     {
         pthread_mutex_lock(&mutex_k);
-        Frame mycur = current;
+        pauseFrame = current;
+        isPause = true;
         pthread_mutex_unlock(&mutex_k);
-        int64_t mytime = mycur.timestamp();
-        pthread_mutex_lock(&mutex_k);
-        prevPause = mytime;
-        pauseCount ++;
-        hit = false;
-        pthread_mutex_unlock(&mutex_k);
-        if (pauseCount%4 == 0)
-            cout << "down" <<endl;
-        else if (pauseCount%4 == 1)
-            cout << "left" <<endl;
-        else if (pauseCount%4 == 2)
-            cout << "right" <<endl;
-        else
-            cout << "up" <<endl;
     }
+    else
+    {
+        if (isPause == true)
+            offset = current.timestamp() - pauseFrame.timestamp();
+        pthread_mutex_lock(&mutex_k);
+        //pauseFrame = current;
+        isPause = false;
+        pthread_mutex_unlock(&mutex_k);
+    }
+    if (isPause)
+        return ;
+    HandList hands = frame.hands();
     for (HandList::const_iterator hl = hands.begin(); hl != hands.end(); ++hl)
     {
         const Hand hand = *hl;
@@ -130,7 +136,7 @@ void SampleListener::onFrame(const Controller& controller) {
             score --;
         }
         if (!hit)
-            scoreUpdate(frame, pauseCount,frame.timestamp()-prevPause);
+            scoreUpdate(frame, pauseCount,frame.timestamp()-offset-prevPause);
         /*for (int i = 1; i < 2; i++)
         {
             const Frame prev = controller.frame(i);
@@ -156,16 +162,38 @@ void SampleListener::onFrame(const Controller& controller) {
         //if (flag)
            //PrintHandInformation(hand);
     }
+    if (flag && frame.timestamp() - offset - prevPause >= 500000)
+    {
+        pthread_mutex_lock(&mutex_k);
+        Frame mycur = frame;
+        offset = 0;
+        pthread_mutex_unlock(&mutex_k);
+        int64_t mytime = mycur.timestamp();
+        pthread_mutex_lock(&mutex_k);
+        prevPause = mytime;
+        pauseCount ++;
+        hit = false;
+        pthread_mutex_unlock(&mutex_k);
+        if (pauseCount%4 == 0)
+            cout << "down" <<endl;
+        else if (pauseCount%4 == 1)
+            cout << "left" <<endl;
+        else if (pauseCount%4 == 2)
+            cout << "right" <<endl;
+        else
+            cout << "up" <<endl;
+    }
 }
 
 
 
-void synchroTime(int64_t time0)
-{
-    zeroTime = time0;
-}
+
 
 int main(int argc, char** argv) {
+    isPause = false;
+    offset = 0;
+    
+    
     SampleListener listener;
     Controller controller;
     
