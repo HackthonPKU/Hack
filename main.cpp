@@ -78,7 +78,7 @@ int scoreUpdate(Frame now,int64_t pauseCount,int64_t timeLenth)
         Vector goal = dest[pauseCount%4];
         float distanceX = palm.x - goal.x;
         float distanceY = palm.y - goal.y;
-        if (sqrt(distanceX*distanceX + distanceY*distanceY) < 100)
+        if (sqrt(distanceX*distanceX + distanceY*distanceY) < 100 && hand.grabStrength() > 0.95)
         {
             score += ((float)1000000)/((float)(1000000-timeLenth));
             cout << "Score is :" << score <<endl;
