@@ -106,9 +106,23 @@ void SampleListener::onFrame(const Controller& controller) {
     << ", fingers: " << frame.fingers().count()
     << ", tools: " << frame.tools().count()
     << ", gestures: " << frame.gestures().count() << std::endl;*/
+    HandList hands = frame.hands();
     if (frame.hands().count()>1)
         return ;
-    if (frame.hands().count()==0)
+    bool ges = false;
+    if (frame.hands().count()!=0)
+    {
+        Hand handfirst = *(hands.begin());
+        if (handfirst.palmNormal().y >= 0)
+        {
+            ges = true;
+        }
+        else
+        {
+            ges = false;
+        }
+    }
+    if (frame.hands().count()==0||ges)
     {
         pthread_mutex_lock(&mutex_k);
         pauseFrame = current;
@@ -118,7 +132,7 @@ void SampleListener::onFrame(const Controller& controller) {
     else
     {
         if (isPause == true)
-            offset = current.timestamp() - pauseFrame.timestamp();
+            offset += current.timestamp() - pauseFrame.timestamp();
         pthread_mutex_lock(&mutex_k);
         //pauseFrame = current;
         isPause = false;
@@ -126,7 +140,6 @@ void SampleListener::onFrame(const Controller& controller) {
     }
     if (isPause)
         return ;
-    HandList hands = frame.hands();
     for (HandList::const_iterator hl = hands.begin(); hl != hands.end(); ++hl)
     {
         const Hand hand = *hl;
